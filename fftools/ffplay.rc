@@ -1,0 +1,4 @@
+#define __MODULE__	    "ffplay.exe"
+#define __ICON__	    "ffplay.ico"
+#define __DESCRIPTION__ "FFplay media player"
+#include <common.rc>

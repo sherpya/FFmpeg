@@ -59,6 +59,8 @@ OBJS-$(1) += fftools/cmdutils.o fftools/opt_common.o fftools/$(1).o $(OBJS-$(1)-
 ifdef HAVE_GNU_WINDRES
 OBJS-$(1) += fftools/fftoolsres.o
 endif
+# if EXESUF is exe (win32) and the corresponding .rc file does exist
+$(if $(and $(findstring .exe,$(EXESUF)),$(wildcard fftools/$(1).rc)),OBJS-$(1) += fftools/$(1)$(PROGSSUF)_rc.o)
 $(1)$(PROGSSUF)_g$(EXESUF): $$(OBJS-$(1))
 $$(OBJS-$(1)): | fftools fftools/textformat fftools/resources fftools/graph
 $$(OBJS-$(1)): CFLAGS  += $(CFLAGS-$(1))

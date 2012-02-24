@@ -1,0 +1,36 @@
+#include <winver.h>
+#include <libavutil/ffversion.h>
+#include <libavutil/avutil.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_APP
+{
+    BLOCK "StringFileInfo" 
+    {  
+        BLOCK "000004b0" // LANG_NEUTRAL,UNICODE_CP
+        {
+            VALUE "Comments", __DESCRIPTION__
+            VALUE "FileDescription", __DESCRIPTION__
+            VALUE "FileVersion", FFMPEG_VERSION
+            VALUE "InternalName", __MODULE__
+            VALUE "LegalCopyright", "FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project"
+            VALUE "OriginalFilename", __MODULE__
+            VALUE "ProductName", "FFmpeg"
+            VALUE "libavutil",  AV_STRINGIFY(LIBAVUTIL_VERSION)
+            VALUE "libavcodec", AV_STRINGIFY(LIBAVCODEC_VERSION)
+            VALUE "libavformat", AV_STRINGIFY(LIBAVFORMAT_VERSION)
+            VALUE "SpecialBuild", "https://oss.netfarm.it/mplayer/"
+        }
+    }
+    BLOCK "VarFileInfo"  
+    {
+        VALUE "Translation",0,0x04b0
+    }
+}
+
+MAIN    ICON DISCARDABLE    __ICON__
