@@ -1,0 +1,4 @@
+#define __MODULE__	    "ffmpeg.exe"
+#define __ICON__	    "ffmpeg.ico"
+#define __DESCRIPTION__ "FFmpeg video converter"
+#include <common.rc>

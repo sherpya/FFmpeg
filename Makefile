@@ -143,6 +143,9 @@ else
 	$(STRIP) $@
 endif
 
+%$(PROGSSUF)_rc.o: %$(PROGSSUF).rc
+	$(CC:gcc=windres) -I$(SRC_PATH) -I$(SRC_PATH)/fftools -o $@ $<
+
 %$(PROGSSUF)_g$(EXESUF): $(FF_DEP_LIBS)
 	$(call LINK,$(LDFLAGS) $(LDEXEFLAGS) $(LD_O) $(OBJS-$*) $(FF_EXTRALIBS))
 
