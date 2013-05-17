@@ -43,6 +43,10 @@
 #include "formats.h"
 #include "video.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef __APPLE__
 /* frei0r plugins use .so on macOS */
 #define FREI0R_SLIBSUF ".so"
@@ -198,6 +202,7 @@ static av_cold int frei0r_init(AVFilterContext *ctx,
     f0r_plugin_info_t *pi;
     char *path;
     int ret = 0;
+#ifndef _WIN32
     int i;
     static const char* const frei0r_pathlist[] = {
         "/usr/local/lib/frei0r-1/",
@@ -205,7 +210,7 @@ static av_cold int frei0r_init(AVFilterContext *ctx,
         "/usr/local/lib64/frei0r-1/",
         "/usr/lib64/frei0r-1/"
     };
-
+#endif
     if (!dl_name) {
         av_log(ctx, AV_LOG_ERROR, "No filter name provided.\n");
         return AVERROR(EINVAL);
@@ -253,11 +258,31 @@ static av_cold int frei0r_init(AVFilterContext *ctx,
         if (ret < 0)
             return ret;
     }
+#ifdef _WIN32
+    if (!s->dl_handle) {
+        char *ls, prefix[MAX_PATH + 1];
+
+        if (!GetModuleFileNameA(NULL, prefix, MAX_PATH))
+            return AVERROR(EINVAL);
+        prefix[MAX_PATH] = 0;
+
+        if (!(ls = strrchr(prefix, '\\')))
+            return AVERROR(EINVAL);
+
+        *ls = 0;
+        strncat(prefix, "\\frei0r-1\\", sizeof(prefix) - 1 - strlen(prefix));
+
+        ret = load_path(ctx, &s->dl_handle, prefix, dl_name);
+        if (ret < 0)
+            return ret;
+    }
+#else
     for (i = 0; !s->dl_handle && i < FF_ARRAY_ELEMS(frei0r_pathlist); i++) {
         ret = load_path(ctx, &s->dl_handle, frei0r_pathlist[i], dl_name);
         if (ret < 0)
             return ret;
     }
+#endif
     if (!s->dl_handle) {
         av_log(ctx, AV_LOG_ERROR, "Could not find module '%s'.\n", dl_name);
         return AVERROR(EINVAL);
