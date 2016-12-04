@@ -26,6 +26,7 @@
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "decode.h"
+#include "libfdk-aac_internal.h"
 
 #ifdef AACDECODER_LIB_VL0
 #define FDKDEC_VER_AT_LEAST(vl0, vl1) \
@@ -49,6 +50,8 @@ enum ConcealMethod {
 typedef struct FDKAACDecContext {
     const AVClass *class;
     HANDLE_AACDECODER handle;
+    void *hLib;
+    aacDecLib pfn;
     uint8_t *decoder_buffer;
     int decoder_buffer_size;
     uint8_t *anc_buffer;
@@ -114,7 +117,7 @@ static const AVClass fdk_aac_dec_class = {
 static int get_stream_info(AVCodecContext *avctx, AVFrame *frame)
 {
     FDKAACDecContext *s   = avctx->priv_data;
-    CStreamInfo *info     = aacDecoder_GetStreamInfo(s->handle);
+    CStreamInfo *info     = s->pfn.aacDecoder_GetStreamInfo(s->handle);
     int channel_counts[0x24] = { 0 };
     int i, ch_error       = 0;
     uint64_t ch_layout    = 0;
@@ -235,8 +238,10 @@ static av_cold int fdk_aac_decode_close(AVCodecContext *avctx)
 {
     FDKAACDecContext *s = avctx->priv_data;
 
-    if (s->handle)
-        aacDecoder_Close(s->handle);
+    if (s->hLib && s->handle) {
+        s->pfn.aacDecoder_Close(s->handle);
+        dlclose(s->hLib);
+    }
     av_freep(&s->decoder_buffer);
     av_freep(&s->anc_buffer);
 
@@ -247,6 +252,27 @@ static av_cold int fdk_aac_decode_init(AVCodecContext *avctx)
 {
     FDKAACDecContext *s = avctx->priv_data;
     AAC_DECODER_ERROR err;
+
+    if (!(s->hLib = dlopen(LIBNAME, RTLD_NOW))) {
+        av_log(avctx, AV_LOG_ERROR, "Unable to load " LIBNAME "\n");
+        return -1;
+    }
+
+    DLSYM(aacDecoder_Open);
+#define aacDecoder_Open s->pfn.aacDecoder_Open
+    DLSYM(aacDecoder_Close);
+    DLSYM(aacDecoder_Fill);
+#define aacDecoder_Fill s->pfn.aacDecoder_Fill
+    DLSYM(aacDecoder_DecodeFrame);
+#define aacDecoder_DecodeFrame s->pfn.aacDecoder_DecodeFrame
+    DLSYM(aacDecoder_GetStreamInfo);
+#define aacDecoder_GetStreamInfo s->pfn.aacDecoder_GetStreamInfo
+    DLSYM(aacDecoder_ConfigRaw);
+#define aacDecoder_ConfigRaw s->pfn.aacDecoder_ConfigRaw
+    DLSYM(aacDecoder_SetParam);
+#define aacDecoder_SetParam s->pfn.aacDecoder_SetParam
+    DLSYM(aacDecoder_AncDataInit);
+#define aacDecoder_AncDataInit s->pfn.aacDecoder_AncDataInit
 
     s->handle = aacDecoder_Open(avctx->extradata_size ? TT_MP4_RAW : TT_MP4_ADTS, 1);
     if (!s->handle) {
