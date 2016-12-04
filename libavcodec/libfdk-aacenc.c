@@ -28,6 +28,8 @@
 #include "internal.h"
 #include "profiles.h"
 
+#include "libfdk-aac_internal.h"
+
 #ifdef AACENCODER_LIB_VL0
 #define FDKENC_VER_AT_LEAST(vl0, vl1) \
     ((AACENCODER_LIB_VL0 > vl0) || \
@@ -47,6 +49,8 @@ typedef struct AACContext {
     int header_period;
     int vbr;
 
+    void *hLib;
+    aacEncLib pfn;
     AudioFrameQueue afq;
 } AACContext;
 
@@ -111,8 +115,11 @@ static int aac_encode_close(AVCodecContext *avctx)
 {
     AACContext *s = avctx->priv_data;
 
-    if (s->handle)
-        aacEncClose(&s->handle);
+    if (s->hLib) {
+        if (s->handle)
+            s->pfn.aacEncClose(&s->handle);
+        dlclose(s->hLib);
+    }
     ff_af_queue_close(&s->afq);
 
     return 0;
@@ -127,6 +134,21 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
     AACENC_ERROR err;
     int aot = FF_PROFILE_AAC_LOW + 1;
     int sce = 0, cpe = 0;
+
+    if (!(s->hLib = dlopen(LIBNAME, RTLD_NOW))) {
+        av_log(avctx, AV_LOG_ERROR, "Unable to load " LIBNAME "\n");
+        return -1;
+    }
+
+    DLSYM(aacEncOpen);
+#define aacEncOpen s->pfn.aacEncOpen
+    DLSYM(aacEncClose);
+    DLSYM(aacEncEncode);
+#define aacEncEncode s->pfn.aacEncEncode
+    DLSYM(aacEncInfo);
+#define aacEncInfo s->pfn.aacEncInfo
+    DLSYM(aacEncoder_SetParam);
+#define aacEncoder_SetParam s->pfn.aacEncoder_SetParam
 
     if ((err = aacEncOpen(&s->handle, 0, avctx->channels)) != AACENC_OK) {
         av_log(avctx, AV_LOG_ERROR, "Unable to open the encoder: %s\n",
