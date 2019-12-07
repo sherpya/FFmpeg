@@ -26,9 +26,13 @@
 #if HAVE_IO_H
 #include <io.h>
 #endif
-#if HAVE_BCRYPT
+#ifdef _WIN32
 #include <windows.h>
+#if HAVE_BCRYPT
 #include <bcrypt.h>
+#else
+#include <wincrypt.h>
+#endif
 #endif
 #if CONFIG_GCRYPT
 #include <gcrypt.h>
@@ -169,6 +173,14 @@ int av_random_bytes(uint8_t* buf, size_t len)
         BCryptCloseAlgorithmProvider(algo_handle, 0);
         if (BCRYPT_SUCCESS(ret))
             return 0;
+    }
+#elif defined(_WIN32)
+    HCRYPTPROV hProvider;
+    if (CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+        BOOL ret = CryptGenRandom(hProvider, len, buf);
+        CryptReleaseContext(hProvider, 0);
+        if (ret)
+           return 0;
     }
 #endif
 
