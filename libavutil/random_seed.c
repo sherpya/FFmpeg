@@ -26,9 +26,13 @@
 #if HAVE_IO_H
 #include <io.h>
 #endif
-#if HAVE_BCRYPT
+#ifdef _WIN32
 #include <windows.h>
+#if HAVE_BCRYPT
 #include <bcrypt.h>
+#else
+#include <wincrypt.h>
+#endif
 #endif
 #include <fcntl.h>
 #include <math.h>
@@ -45,6 +49,7 @@
 #define TEST 0
 #endif
 
+#ifndef _WIN32
 static int read_random(uint32_t *dst, const char *file)
 {
 #if HAVE_UNISTD_H
@@ -61,6 +66,7 @@ static int read_random(uint32_t *dst, const char *file)
     return -1;
 #endif
 }
+#endif
 
 static uint32_t get_generic_seed(void)
 {
@@ -131,15 +137,25 @@ uint32_t av_get_random_seed(void)
         if (BCRYPT_SUCCESS(ret))
             return seed;
     }
+#elif defined(_WIN32)
+    HCRYPTPROV hProvider;
+    if (CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+        BOOL ret = CryptGenRandom(hProvider, sizeof(seed), (BYTE*)&seed);
+        CryptReleaseContext(hProvider, 0);
+        if (ret)
+            return seed;
+    }
 #endif
 
 #if HAVE_ARC4RANDOM
     return arc4random();
 #endif
 
+#ifndef _WIN32
     if (read_random(&seed, "/dev/urandom") == sizeof(seed))
         return seed;
     if (read_random(&seed, "/dev/random")  == sizeof(seed))
         return seed;
+#endif
     return get_generic_seed();
 }
