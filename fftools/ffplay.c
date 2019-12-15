@@ -3841,6 +3841,7 @@ int main(int argc, char **argv)
     SDL_EventState(SDL_USEREVENT, SDL_IGNORE);
 
     if (!display_disable) {
+        const char *video_renderer = getenv("SDL_VIDEO_RENDER");
         int flags = SDL_WINDOW_HIDDEN;
         if (alwaysontop)
 #if SDL_VERSION_ATLEAST(2,0,5)
@@ -3873,6 +3874,8 @@ int main(int argc, char **argv)
         }
         window = SDL_CreateWindow(program_name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, default_width, default_height, flags);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+        if (video_renderer)
+            SDL_SetHint(SDL_HINT_RENDER_DRIVER, video_renderer);
         if (!window) {
             av_log(NULL, AV_LOG_FATAL, "Failed to create window: %s", SDL_GetError());
             do_exit(NULL);
