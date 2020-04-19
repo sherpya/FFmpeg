@@ -1085,6 +1085,15 @@ static int udp_write(URLContext *h, const uint8_t *buf, int size)
     return ret < 0 ? ff_neterrno() : ret;
 }
 
+#ifdef _WIN32
+void CALLBACK pthread_cancel_winsock(ULONG_PTR fd);
+void CALLBACK pthread_cancel_winsock(ULONG_PTR fd)
+{
+    CancelIo((HANDLE) fd);
+}
+#endif
+
+
 static int udp_close(URLContext *h)
 {
     UDPContext *s = h->priv_data;
@@ -1112,7 +1121,7 @@ static int udp_close(URLContext *h)
              * the socket and abort pending IO, subsequent recvfrom() calls
              * will fail with WSAESHUTDOWN causing the thread to exit. */
             shutdown(s->udp_fd, SD_RECEIVE);
-            CancelIoEx((HANDLE)(SOCKET)s->udp_fd, NULL);
+            QueueUserAPC(pthread_cancel_winsock, pthread_gethandle(s->circular_buffer_thread), s->udp_fd);
 #else
             pthread_cancel(s->circular_buffer_thread);
 #endif
