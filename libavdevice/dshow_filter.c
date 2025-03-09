@@ -135,7 +135,11 @@ long WINAPI ff_dshow_filter_JoinFilterGraph(DShowFilter *this, IFilterGraph *gra
 
     this->info.pGraph = graph;
     if (name)
-        wcscpy_s(this->info.achName, sizeof(this->info.achName) / sizeof(wchar_t), name);
+    {
+        size_t max_chars = sizeof(this->info.achName) / sizeof(wchar_t);
+        wcsncpy(this->info.achName, name, max_chars - 1);
+        this->info.achName[max_chars - 1] = L'\0';
+    }
 
     return S_OK;
 }
